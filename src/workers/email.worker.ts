@@ -1,6 +1,7 @@
 import { Job, Worker } from "bullmq";
 import { env } from "../config/env.js";
 import { prisma } from "../config/database.js";
+import { deadLetterQueue } from "../queues/dlq.queue.js";
 import type { EmailJobData } from "../queues/email.queue.js";
 
 async function processEmailJob(
@@ -34,7 +35,6 @@ async function processEmailJob(
     return;
   }
 
-  // Mark the email job as processing.
   if (emailJob) {
     await prisma.emailJob.update({
       where: {
@@ -49,9 +49,33 @@ async function processEmailJob(
     });
   }
 
-  // Simulate a transient email provider failure.
-  // The first two attempts will fail.
-  // The third attempt will succeed.
+  // Temporary permanent failure simulation for DLQ testing.
+  if (job.data.email === "dlq-test@example.com") {
+    console.log(
+      `Simulating permanent failure. Attempt: ${
+        job.attemptsMade + 1
+      }`,
+    );
+
+    if (emailJob) {
+      await prisma.emailJob.update({
+        where: {
+          id: emailJob.id,
+        },
+        data: {
+          status: "FAILED",
+          lastError: "Simulated permanent email provider failure",
+        },
+      });
+    }
+
+    throw new Error(
+      "Simulated permanent email provider failure",
+    );
+  }
+
+  // Temporary transient failure simulation.
+  // First two attempts fail; third attempt succeeds.
   if (
     job.data.email === "retry-test@example.com" &&
     job.attemptsMade < 2
@@ -85,7 +109,6 @@ async function processEmailJob(
     setTimeout(resolve, 1000);
   });
 
-  // Mark the email job as successfully sent.
   if (emailJob) {
     await prisma.emailJob.update({
       where: {
@@ -120,11 +143,28 @@ worker.on("completed", (job) => {
   console.log(`Job completed: ${job.id}`);
 });
 
-worker.on("failed", (job, error) => {
+worker.on("failed", async (job, error) => {
+  if (!job) {
+    return;
+  }
+
   console.error(
-    `Job failed: ${job?.id}`,
+    `Job failed: ${job.id}`,
     error.message,
   );
+
+  if (job.attemptsMade >= (job.opts.attempts ?? 1)) {
+    await deadLetterQueue.add("dead-letter-email", {
+      originalJobId: job.id ?? "unknown",
+      failureReason: error.message,
+      failedAt: new Date().toISOString(),
+      data: job.data,
+    });
+
+    console.error(
+      `Job moved to DLQ: ${job.id}`,
+    );
+  }
 });
 
 worker.on("error", (error) => {

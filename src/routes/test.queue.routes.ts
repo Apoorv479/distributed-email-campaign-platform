@@ -6,6 +6,9 @@ import { createEmailJob } from "../services/email-job.service.js";
 const router = Router();
 
 router.post("/test/email", async (_req, res) => {
+  const campaignId = "test-campaign";
+  const recipientEmail = "dlq-test@example.com";
+
   const user = await prisma.user.upsert({
     where: {
       email: "test-user@example.com",
@@ -19,11 +22,11 @@ router.post("/test/email", async (_req, res) => {
 
   const campaign = await prisma.campaign.upsert({
     where: {
-      id: "test-campaign",
+      id: campaignId,
     },
     update: {},
     create: {
-      id: "test-campaign",
+      id: campaignId,
       userId: user.id,
       name: "Test Campaign",
       subject: "BullMQ Test Email",
@@ -35,14 +38,14 @@ router.post("/test/email", async (_req, res) => {
     where: {
       campaignId_email: {
         campaignId: campaign.id,
-        email: "retry-test@example.com",
+        email: recipientEmail,
       },
     },
     update: {},
     create: {
       campaignId: campaign.id,
-      email: "retry-test@example.com",
-      name: "Retry Test Recipient",
+      email: recipientEmail,
+      name: "DLQ Test Recipient",
     },
   });
 
