@@ -15,8 +15,14 @@ function getEnvVariable(name: string): string {
 export const env = {
   nodeEnv: getEnvVariable("NODE_ENV"),
   port: Number(getEnvVariable("PORT")),
+
   redis: {
     host: getEnvVariable("REDIS_HOST"),
     port: Number(getEnvVariable("REDIS_PORT")),
   },
+
+  database: {
+    url: getEnvVariable("DATABASE_URL"),
+  },
+
 };

@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns Campaign[]
+
+  @@map("users")
+}
+
+model Campaign {
+  id          String         @id @default(uuid())
+  userId      String
+  name        String
+  subject     String
+  body        String
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipients Recipient[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("campaigns")
+}
+
+model Recipient {
+  id         String          @id @default(uuid())
+  campaignId String
+  email      String
+  name       String?
+  status     RecipientStatus @default(PENDING)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  jobs     EmailJob[]
+
+  @@unique([campaignId, email])
+  @@index([campaignId])
+  @@index([status])
+  @@map("recipients")
+}
+
+model EmailJob {
+  id          String         @id @default(uuid())
+  campaignId  String
+  recipientId String
+  status      EmailJobStatus @default(PENDING)
+  attempts    Int            @default(0)
+  provider    String?
+  lastError   String?
+  sentAt      DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, recipientId])
+  @@index([campaignId])
+  @@index([recipientId])
+  @@index([status])
+  @@map("email_jobs")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum RecipientStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum EmailJobStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
+}

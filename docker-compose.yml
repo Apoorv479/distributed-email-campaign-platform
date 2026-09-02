@@ -18,5 +18,28 @@ services:
       timeout: 3s
       retries: 5
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: email-campaign-postgres
+    restart: unless-stopped
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      POSTGRES_USER: email_app
+      POSTGRES_PASSWORD: email_dev_password
+      POSTGRES_DB: email_campaigns
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U email_app -d email_campaigns"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   redis_data:
+  postgres_data:

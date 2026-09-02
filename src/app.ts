@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { checkRedisConnection } from "./config/redis.js";
+import { checkDatabaseConnection } from "./config/database.js";
 
 const app = express();
 
@@ -18,16 +19,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/health", async (_req, res) => {
-  const redisHealthy = await checkRedisConnection();
+  const [redisHealthy, databaseHealthy] = await Promise.all([
+    checkRedisConnection(),
+    checkDatabaseConnection(),
+  ]);
 
-  const overallHealthy = redisHealthy;
+  const overallHealthy = redisHealthy && databaseHealthy;
 
   res.status(overallHealthy ? 200 : 503).json({
     status: overallHealthy ? "ok" : "degraded",
     service: "email-campaign-api",
-
     dependencies: {
       redis: redisHealthy ? "up" : "down",
+      database: databaseHealthy ? "up" : "down",
     },
   });
 });
