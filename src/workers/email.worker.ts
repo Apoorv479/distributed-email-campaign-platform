@@ -13,7 +13,26 @@ async function processEmailJob(
     recipientId: job.data.recipientId,
     email: job.data.email,
     subject: job.data.subject,
+    attempt: job.attemptsMade + 1,
   });
+
+  // Simulate a transient email provider failure.
+  // The first two attempts will fail.
+  // The third attempt will succeed.
+  if (
+    job.data.email === "retry-test@example.com" &&
+    job.attemptsMade < 2
+  ) {
+    console.log(
+      `Simulating transient failure. Attempt: ${
+        job.attemptsMade + 1
+      }`,
+    );
+
+    throw new Error(
+      "Simulated transient email provider failure",
+    );
+  }
 
   // Temporary email processing simulation.
   // Real provider integration will come in a later phase.
@@ -21,7 +40,9 @@ async function processEmailJob(
     setTimeout(resolve, 1000);
   });
 
-  console.log(`Email processed successfully: ${job.data.email}`);
+  console.log(
+    `Email processed successfully: ${job.data.email}`,
+  );
 }
 
 const worker = new Worker<EmailJobData>(
