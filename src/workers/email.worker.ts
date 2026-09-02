@@ -1,5 +1,6 @@
 import { Job, Worker } from "bullmq";
 import { env } from "../config/env.js";
+import { prisma } from "../config/database.js";
 import type { EmailJobData } from "../queues/email.queue.js";
 
 async function processEmailJob(
@@ -16,6 +17,38 @@ async function processEmailJob(
     attempt: job.attemptsMade + 1,
   });
 
+  const emailJob = await prisma.emailJob.findUnique({
+    where: {
+      campaignId_recipientId: {
+        campaignId: job.data.campaignId,
+        recipientId: job.data.recipientId,
+      },
+    },
+  });
+
+  if (emailJob?.status === "SENT") {
+    console.log(
+      `Email already sent. Skipping duplicate job: ${job.id}`,
+    );
+
+    return;
+  }
+
+  // Mark the email job as processing.
+  if (emailJob) {
+    await prisma.emailJob.update({
+      where: {
+        id: emailJob.id,
+      },
+      data: {
+        status: "PROCESSING",
+        attempts: {
+          increment: 1,
+        },
+      },
+    });
+  }
+
   // Simulate a transient email provider failure.
   // The first two attempts will fail.
   // The third attempt will succeed.
@@ -29,6 +62,18 @@ async function processEmailJob(
       }`,
     );
 
+    if (emailJob) {
+      await prisma.emailJob.update({
+        where: {
+          id: emailJob.id,
+        },
+        data: {
+          status: "FAILED",
+          lastError: "Simulated transient email provider failure",
+        },
+      });
+    }
+
     throw new Error(
       "Simulated transient email provider failure",
     );
@@ -39,6 +84,20 @@ async function processEmailJob(
   await new Promise((resolve) => {
     setTimeout(resolve, 1000);
   });
+
+  // Mark the email job as successfully sent.
+  if (emailJob) {
+    await prisma.emailJob.update({
+      where: {
+        id: emailJob.id,
+      },
+      data: {
+        status: "SENT",
+        sentAt: new Date(),
+        lastError: null,
+      },
+    });
+  }
 
   console.log(
     `Email processed successfully: ${job.data.email}`,
