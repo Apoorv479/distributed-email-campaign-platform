@@ -5,9 +5,15 @@ import { createEmailJob } from "../services/email-job.service.js";
 
 const router = Router();
 
-router.post("/test/email", async (_req, res) => {
+router.post("/test/email", async (req, res) => {
   const campaignId = "test-campaign";
-  const recipientEmail = "dlq-test@example.com";
+
+  const recipientEmail =
+    req.body.email ?? "scheduled-test@example.com";
+
+  const scheduledAt = req.body.scheduledAt
+    ? new Date(req.body.scheduledAt)
+    : null;
 
   const user = await prisma.user.upsert({
     where: {
@@ -24,13 +30,16 @@ router.post("/test/email", async (_req, res) => {
     where: {
       id: campaignId,
     },
-    update: {},
+    update: {
+      scheduledAt,
+    },
     create: {
       id: campaignId,
       userId: user.id,
       name: "Test Campaign",
       subject: "BullMQ Test Email",
       body: "This is a test email job.",
+      scheduledAt,
     },
   });
 
@@ -45,7 +54,7 @@ router.post("/test/email", async (_req, res) => {
     create: {
       campaignId: campaign.id,
       email: recipientEmail,
-      name: "DLQ Test Recipient",
+      name: "Test Recipient",
     },
   });
 
@@ -53,6 +62,10 @@ router.post("/test/email", async (_req, res) => {
     campaign.id,
     recipient.id,
   );
+
+  const delay = scheduledAt
+    ? Math.max(scheduledAt.getTime() - Date.now(), 0)
+    : 0;
 
   const job = await emailQueue.add(
     "send-email",
@@ -69,15 +82,20 @@ router.post("/test/email", async (_req, res) => {
         type: "exponential",
         delay: 1000,
       },
+      delay,
     },
   );
 
   res.status(202).json({
-    message: "Email job added to queue",
+    message: scheduledAt
+      ? "Email job scheduled"
+      : "Email job added to queue",
     jobId: job.id,
     emailJobId: emailJob.id,
     campaignId: campaign.id,
     recipientId: recipient.id,
+    scheduledAt,
+    delay,
   });
 });
 
