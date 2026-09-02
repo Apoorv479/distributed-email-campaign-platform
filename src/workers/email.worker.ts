@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { prisma } from "../config/database.js";
 import { deadLetterQueue } from "../queues/dlq.queue.js";
 import type { EmailJobData } from "../queues/email.queue.js";
+import { checkRateLimit } from "../services/rate-limit.service.js";
 
 async function processEmailJob(
   job: Job<EmailJobData>,
@@ -34,6 +35,24 @@ async function processEmailJob(
 
     return;
   }
+
+  const rateLimit = await checkRateLimit(
+    "rate-limit:email",
+  );
+
+  if (!rateLimit.allowed) {
+    console.log(
+      `Rate limit reached. Retrying job ${job.id} after ${rateLimit.retryAfterSeconds}s`,
+    );
+
+    throw new Error(
+      `Email rate limit exceeded. Retry after ${rateLimit.retryAfterSeconds}s`,
+    );
+  }
+
+  console.log(
+    `Rate limit allowed. Remaining: ${rateLimit.remaining}`,
+  );
 
   if (emailJob) {
     await prisma.emailJob.update({
