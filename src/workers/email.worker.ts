@@ -32,6 +32,7 @@ const worker = new Worker<EmailJobData>(
       host: env.redis.host,
       port: env.redis.port,
     },
+    concurrency: 4,
   },
 );
 
