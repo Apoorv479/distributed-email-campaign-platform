@@ -1,0 +1,37 @@
+{
+  "name": "distributed-email-campaign-platform",
+  "version": "1.0.0",
+  "description": "A distributed email campaign platform built with Node.js, TypeScript, BullMQ and Redis",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "email",
+    "campaign",
+    "bullmq",
+    "redis",
+    "distributed-systems",
+    "job-queue",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "Apoorv Jha",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
