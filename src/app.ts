@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { checkRedisConnection } from "./config/redis.js";
 import { checkDatabaseConnection } from "./config/database.js";
+import testQueueRoutes from "./routes/test.queue.routes.js";
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/api", testQueueRoutes);
 
 app.get("/health", async (_req, res) => {
   const [redisHealthy, databaseHealthy] = await Promise.all([

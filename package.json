@@ -4,12 +4,12 @@
   "description": "A distributed email campaign platform built with Node.js, TypeScript, BullMQ and Redis",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit",
-    "postinstall": "prisma skills sync || exit 0"
-  },
+  "dev": "tsx watch src/server.ts",
+  "worker:email": "tsx src/workers/email.worker.ts",
+  "build": "tsc",
+  "start": "node dist/server.js",
+  "typecheck": "tsc --noEmit"
+},
   "keywords": [
     "email",
     "campaign",
@@ -25,6 +25,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "bullmq": "^6.3.4",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
