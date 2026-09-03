@@ -12,6 +12,12 @@ function getEnvVariable(name: string): string {
   return value;
 }
 
+function getOptionalEnvVariable(
+  name: string,
+): string | undefined {
+  return process.env[name];
+}
+
 export const env = {
   nodeEnv: getEnvVariable("NODE_ENV"),
   port: Number(getEnvVariable("PORT")),
@@ -25,4 +31,15 @@ export const env = {
     url: getEnvVariable("DATABASE_URL"),
   },
 
+  smtp: {
+    host: getOptionalEnvVariable("SMTP_HOST"),
+    port: Number(
+      getOptionalEnvVariable("SMTP_PORT") ?? 587,
+    ),
+    secure:
+      getOptionalEnvVariable("SMTP_SECURE") === "true",
+    user: getOptionalEnvVariable("SMTP_USER"),
+    password: getOptionalEnvVariable("SMTP_PASSWORD"),
+    from: getOptionalEnvVariable("SMTP_FROM"),
+  },
 };

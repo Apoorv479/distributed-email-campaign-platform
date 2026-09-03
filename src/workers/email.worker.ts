@@ -9,6 +9,7 @@ import {
   checkUserRateLimit,
 } from "../services/rate-limit.service.js";
 import { rescheduleEmailJob } from "../services/email-reschedule.service.js";
+import { createEmailProvider } from "../providers/email-provider.factory.js";
 
 async function processEmailJob(
   job: Job<EmailJobData>,
@@ -160,22 +161,33 @@ async function processEmailJob(
 
   // Temporary email processing simulation.
   // Real provider integration will come in a later phase.
-  await new Promise((resolve) => {
-    setTimeout(resolve, 1000);
-  });
+ const emailProvider = createEmailProvider(
+  job.data.provider,
+);
 
-  if (emailJob) {
-    await prisma.emailJob.update({
-      where: {
-        id: emailJob.id,
-      },
-      data: {
-        status: "SENT",
-        sentAt: new Date(),
-        lastError: null,
-      },
-    });
-  }
+const result = await emailProvider.send({
+  to: job.data.email,
+  subject: job.data.subject,
+  body: job.data.body,
+});
+
+console.log({
+  messageId: result.messageId,
+  provider: result.provider,
+});
+
+ if (emailJob) {
+  await prisma.emailJob.update({
+    where: { id: emailJob.id },
+    data: {
+      status: "SENT",
+      provider: result.provider,
+      providerMessageId: result.messageId,
+      sentAt: new Date(),
+      lastError: null,
+    },
+  });
+}
 
   console.log(
     `Email processed successfully: ${job.data.email}`,

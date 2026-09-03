@@ -12,7 +12,7 @@ router.post("/test/email", async (req, res) => {
     req.body.email ?? "scheduled-test@example.com";
 
   const provider =
-    req.body.provider ?? "smtp";
+    req.body.provider ?? "mock";
 
   const scheduledAt = req.body.scheduledAt
     ? new Date(req.body.scheduledAt)
