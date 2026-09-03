@@ -178,13 +178,24 @@ console.log({
 
  if (emailJob) {
   await prisma.emailJob.update({
-    where: { id: emailJob.id },
+    where: {
+      id: emailJob.id,
+    },
     data: {
       status: "SENT",
       provider: result.provider,
       providerMessageId: result.messageId,
       sentAt: new Date(),
       lastError: null,
+    },
+  });
+
+  await prisma.recipient.update({
+    where: {
+      id: job.data.recipientId,
+    },
+    data: {
+      status: "SENT",
     },
   });
 }

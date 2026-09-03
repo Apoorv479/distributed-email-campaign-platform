@@ -1,6 +1,7 @@
 
 import type { Request, Response } from "express";
 import { prisma } from "../config/database.js";
+import { executeCampaign } from "../services/campaign-execution.service.js";
 
 export async function createCampaign(
   req: Request,
@@ -388,7 +389,44 @@ export async function scheduleCampaign(
 }
 
 
+export async function executeCampaignController(
+  req: Request<{ id: string }>,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id: campaignId } = req.params;
 
+    await executeCampaign(campaignId);
+
+    res.status(200).json({
+      message: "Campaign execution started",
+      campaignId,
+    });
+  } catch (error) {
+    console.error(
+      "Execute campaign error:",
+      error,
+    );
+
+    if (error instanceof Error) {
+      if (error.message === "Campaign not found") {
+        res.status(404).json({
+          message: error.message,
+        });
+        return;
+      }
+
+      res.status(409).json({
+        message: error.message,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      message: "Failed to execute campaign",
+    });
+  }
+}
 
 
 
