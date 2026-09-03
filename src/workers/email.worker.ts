@@ -1,3 +1,4 @@
+
 import { Job, Worker } from "bullmq";
 import { env } from "../config/env.js";
 import { prisma } from "../config/database.js";
@@ -7,6 +8,7 @@ import {
   checkProviderRateLimit,
   checkUserRateLimit,
 } from "../services/rate-limit.service.js";
+import { rescheduleEmailJob } from "../services/email-reschedule.service.js";
 
 async function processEmailJob(
   job: Job<EmailJobData>,
@@ -48,12 +50,15 @@ async function processEmailJob(
 
   if (!userRateLimit.allowed) {
     console.log(
-      `User rate limit reached. Retrying job ${job.id} after ${userRateLimit.retryAfterSeconds}s`,
+      `User rate limit reached. Rescheduling job ${job.id} after ${userRateLimit.retryAfterSeconds}s`,
     );
 
-    throw new Error(
-      `User email rate limit exceeded. Retry after ${userRateLimit.retryAfterSeconds}s`,
+    await rescheduleEmailJob(
+      job,
+      userRateLimit.retryAfterSeconds,
     );
+
+    return;
   }
 
   console.log(
@@ -68,12 +73,15 @@ async function processEmailJob(
 
   if (!providerRateLimit.allowed) {
     console.log(
-      `Provider rate limit reached. Retrying job ${job.id} after ${providerRateLimit.retryAfterSeconds}s`,
+      `Provider rate limit reached. Rescheduling job ${job.id} after ${providerRateLimit.retryAfterSeconds}s`,
     );
 
-    throw new Error(
-      `Provider email rate limit exceeded. Retry after ${providerRateLimit.retryAfterSeconds}s`,
+    await rescheduleEmailJob(
+      job,
+      providerRateLimit.retryAfterSeconds,
     );
+
+    return;
   }
 
   console.log(
@@ -225,3 +233,4 @@ worker.on("error", (error) => {
 });
 
 console.log("Email worker started");
+
