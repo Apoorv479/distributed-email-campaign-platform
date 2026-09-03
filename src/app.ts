@@ -4,7 +4,8 @@ import helmet from "helmet";
 import { checkRedisConnection } from "./config/redis.js";
 import { checkDatabaseConnection } from "./config/database.js";
 import testQueueRoutes from "./routes/test.queue.routes.js";
-
+import campaignRoutes from "./routes/campaign.routes.js";
+import recipientRoutes from "./routes/recipient.routes.js";
 const app = express();
 
 app.use(helmet());
@@ -20,6 +21,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", testQueueRoutes);
+app.use("/api/campaigns", campaignRoutes);
+app.use("/api/campaigns", recipientRoutes);
 
 app.get("/health", async (_req, res) => {
   const [redisHealthy, databaseHealthy] = await Promise.all([
