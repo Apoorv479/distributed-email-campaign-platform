@@ -11,6 +11,9 @@ router.post("/test/email", async (req, res) => {
   const recipientEmail =
     req.body.email ?? "scheduled-test@example.com";
 
+  const provider =
+    req.body.provider ?? "smtp";
+
   const scheduledAt = req.body.scheduledAt
     ? new Date(req.body.scheduledAt)
     : null;
@@ -64,18 +67,23 @@ router.post("/test/email", async (req, res) => {
   );
 
   const delay = scheduledAt
-    ? Math.max(scheduledAt.getTime() - Date.now(), 0)
+    ? Math.max(
+        scheduledAt.getTime() - Date.now(),
+        0,
+      )
     : 0;
 
   const job = await emailQueue.add(
-    "send-email",
-    {
-      campaignId: campaign.id,
-      recipientId: recipient.id,
-      email: recipient.email,
-      subject: campaign.subject,
-      body: campaign.body,
-    },
+  "send-email",
+  {
+    campaignId: campaign.id,
+    recipientId: recipient.id,
+    userId: user.id,
+    email: recipient.email,
+    subject: campaign.subject,
+    body: campaign.body,
+    provider,
+  },
     {
       attempts: 3,
       backoff: {
@@ -94,6 +102,7 @@ router.post("/test/email", async (req, res) => {
     emailJobId: emailJob.id,
     campaignId: campaign.id,
     recipientId: recipient.id,
+    provider,
     scheduledAt,
     delay,
   });

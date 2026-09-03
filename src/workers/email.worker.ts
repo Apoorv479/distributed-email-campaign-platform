@@ -3,7 +3,10 @@ import { env } from "../config/env.js";
 import { prisma } from "../config/database.js";
 import { deadLetterQueue } from "../queues/dlq.queue.js";
 import type { EmailJobData } from "../queues/email.queue.js";
-import { checkRateLimit } from "../services/rate-limit.service.js";
+import {
+  checkProviderRateLimit,
+  checkUserRateLimit,
+} from "../services/rate-limit.service.js";
 
 async function processEmailJob(
   job: Job<EmailJobData>,
@@ -14,8 +17,10 @@ async function processEmailJob(
     jobId: job.id,
     campaignId: job.data.campaignId,
     recipientId: job.data.recipientId,
+    userId: job.data.userId,
     email: job.data.email,
     subject: job.data.subject,
+    provider: job.data.provider,
     attempt: job.attemptsMade + 1,
   });
 
@@ -36,22 +41,43 @@ async function processEmailJob(
     return;
   }
 
-  const rateLimit = await checkRateLimit(
-    "rate-limit:email",
+  // Check per-user quota.
+  const userRateLimit = await checkUserRateLimit(
+    job.data.userId,
   );
 
-  if (!rateLimit.allowed) {
+  if (!userRateLimit.allowed) {
     console.log(
-      `Rate limit reached. Retrying job ${job.id} after ${rateLimit.retryAfterSeconds}s`,
+      `User rate limit reached. Retrying job ${job.id} after ${userRateLimit.retryAfterSeconds}s`,
     );
 
     throw new Error(
-      `Email rate limit exceeded. Retry after ${rateLimit.retryAfterSeconds}s`,
+      `User email rate limit exceeded. Retry after ${userRateLimit.retryAfterSeconds}s`,
     );
   }
 
   console.log(
-    `Rate limit allowed. Remaining: ${rateLimit.remaining}`,
+    `User rate limit allowed. Remaining: ${userRateLimit.remaining}`,
+  );
+
+  // Check provider quota.
+  const providerRateLimit =
+    await checkProviderRateLimit(
+      job.data.provider,
+    );
+
+  if (!providerRateLimit.allowed) {
+    console.log(
+      `Provider rate limit reached. Retrying job ${job.id} after ${providerRateLimit.retryAfterSeconds}s`,
+    );
+
+    throw new Error(
+      `Provider email rate limit exceeded. Retry after ${providerRateLimit.retryAfterSeconds}s`,
+    );
+  }
+
+  console.log(
+    `Provider rate limit allowed. Remaining: ${providerRateLimit.remaining}`,
   );
 
   if (emailJob) {
@@ -83,7 +109,8 @@ async function processEmailJob(
         },
         data: {
           status: "FAILED",
-          lastError: "Simulated permanent email provider failure",
+          lastError:
+            "Simulated permanent email provider failure",
         },
       });
     }
@@ -112,7 +139,8 @@ async function processEmailJob(
         },
         data: {
           status: "FAILED",
-          lastError: "Simulated transient email provider failure",
+          lastError:
+            "Simulated transient email provider failure",
         },
       });
     }
@@ -172,13 +200,19 @@ worker.on("failed", async (job, error) => {
     error.message,
   );
 
-  if (job.attemptsMade >= (job.opts.attempts ?? 1)) {
-    await deadLetterQueue.add("dead-letter-email", {
-      originalJobId: job.id ?? "unknown",
-      failureReason: error.message,
-      failedAt: new Date().toISOString(),
-      data: job.data,
-    });
+  if (
+    job.attemptsMade >=
+    (job.opts.attempts ?? 1)
+  ) {
+    await deadLetterQueue.add(
+      "dead-letter-email",
+      {
+        originalJobId: job.id ?? "unknown",
+        failureReason: error.message,
+        failedAt: new Date().toISOString(),
+        data: job.data,
+      },
+    );
 
     console.error(
       `Job moved to DLQ: ${job.id}`,
