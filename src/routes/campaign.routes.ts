@@ -7,6 +7,7 @@ import {
   cancelCampaign,
   scheduleCampaign,
   executeCampaignController,
+  getCampaignProgressController,
 } from "../controllers/campaign.controller.js";
 const router = Router();
 
@@ -19,5 +20,9 @@ router.post("/:id/schedule", scheduleCampaign);
 router.post(
   "/:id/execute",
   executeCampaignController,
+);
+router.get(
+  "/:id/progress",
+  getCampaignProgressController,
 );
 export default router;

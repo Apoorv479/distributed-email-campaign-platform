@@ -2,6 +2,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../config/database.js";
 import { executeCampaign } from "../services/campaign-execution.service.js";
+import { getCampaignProgress } from "../services/campaign-progress.service.js";
 
 export async function createCampaign(
   req: Request,
@@ -431,3 +432,36 @@ export async function executeCampaignController(
 
 
 
+export async function getCampaignProgressController(
+  req: Request<{ id: string }>,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id: campaignId } = req.params;
+
+    const progress = await getCampaignProgress(
+      campaignId,
+    );
+
+    res.status(200).json(progress);
+  } catch (error) {
+    console.error(
+      "Get campaign progress error:",
+      error,
+    );
+
+    if (
+      error instanceof Error &&
+      error.message === "Campaign not found"
+    ) {
+      res.status(404).json({
+        message: error.message,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      message: "Failed to get campaign progress",
+    });
+  }
+}

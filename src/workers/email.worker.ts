@@ -10,6 +10,7 @@ import {
 } from "../services/rate-limit.service.js";
 import { rescheduleEmailJob } from "../services/email-reschedule.service.js";
 import { createEmailProvider } from "../providers/email-provider.factory.js";
+import { updateCampaignCompletion } from "../services/campaign-progress.service.js";
 
 async function processEmailJob(
   job: Job<EmailJobData>,
@@ -199,10 +200,17 @@ console.log({
     },
   });
 }
+await updateCampaignCompletion(
+  job.data.campaignId,
+);
 
-  console.log(
-    `Email processed successfully: ${job.data.email}`,
-  );
+console.log(
+  `Campaign completion check finished: ${job.data.campaignId}`,
+);
+
+console.log(
+  `Email processed successfully: ${job.data.email}`,
+);
 }
 
 const worker = new Worker<EmailJobData>(
