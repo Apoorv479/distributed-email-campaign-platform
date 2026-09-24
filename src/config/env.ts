@@ -46,4 +46,9 @@ export const env = {
   secret: getEnvVariable("JWT_SECRET"),
   expiresIn: getEnvVariable("JWT_EXPIRES_IN"),
 },
+github: {
+  clientId: getEnvVariable("GITHUB_CLIENT_ID"),
+  clientSecret: getEnvVariable("GITHUB_CLIENT_SECRET"),
+  callbackUrl: getEnvVariable("GITHUB_CALLBACK_URL"),
+},
 };
