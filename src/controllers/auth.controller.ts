@@ -5,6 +5,7 @@ import {
   createAuthToken,
   findOrCreateUser,
 } from "../services/auth.service.js";
+import { consumeOAuthState } from "../services/oauth-state.service.js";
 
 export async function login(
   req: Request,
@@ -48,6 +49,29 @@ export async function githubCallback(
 ): Promise<void> {
   try {
     const { code } = req.query;
+    const { state } = req.query;
+
+if (
+  typeof state !== "string" ||
+  !state
+) {
+  res.status(400).json({
+    message: "OAuth state is required",
+  });
+
+  return;
+}
+
+const isValidState =
+  await consumeOAuthState(state);
+
+if (!isValidState) {
+  res.status(401).json({
+    message: "Invalid or expired OAuth state",
+  });
+
+  return;
+}
 
     if (typeof code !== "string" || !code) {
       res.status(400).json({
