@@ -9,6 +9,8 @@ import { checkDatabaseConnection } from "./config/database.js";
 import testQueueRoutes from "./routes/test.queue.routes.js";
 import campaignRoutes from "./routes/campaign.routes.js";
 import recipientRoutes from "./routes/recipient.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import testAuthRoutes from "./routes/test.auth.routes.js";
 
 const app = express();
 
@@ -27,6 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", testQueueRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/campaigns", recipientRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api", testAuthRoutes);
+
 
 app.get("/health", async (_req, res) => {
   const [redisHealthy, databaseHealthy] = await Promise.all([

@@ -42,4 +42,8 @@ export const env = {
     password: getOptionalEnvVariable("SMTP_PASSWORD"),
     from: getOptionalEnvVariable("SMTP_FROM"),
   },
+  jwt: {
+  secret: getEnvVariable("JWT_SECRET"),
+  expiresIn: getEnvVariable("JWT_EXPIRES_IN"),
+},
 };

@@ -1,26 +1,38 @@
 
 import type { Request, Response } from "express";
+import {
+  type AuthenticatedRequest,
+} from "../middleware/auth.middleware.js";
 import { prisma } from "../config/database.js";
 import { executeCampaign } from "../services/campaign-execution.service.js";
 import { getCampaignProgress } from "../services/campaign-progress.service.js";
 
 export async function createCampaign(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
   try {
     const {
-      userId,
       name,
       subject,
       body,
       scheduledAt,
     } = req.body;
 
-    if (!userId || !name || !subject || !body) {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    if (!name || !subject || !body) {
       res.status(400).json({
         message:
-          "userId, name, subject and body are required",
+          "name, subject and body are required",
       });
 
       return;
@@ -72,15 +84,15 @@ export async function createCampaign(
 }
 
 export async function getCampaigns(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
   try {
-    const userId = req.query.userId;
+    const userId = req.user?.id;
 
-    if (typeof userId !== "string" || !userId) {
-      res.status(400).json({
-        message: "userId query parameter is required",
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
       });
 
       return;
@@ -111,15 +123,25 @@ export async function getCampaigns(
 }
 
 export async function getCampaignById(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    const campaign = await prisma.campaign.findUnique({
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const campaign = await prisma.campaign.findFirst({
       where: {
         id,
+        userId,
       },
       include: {
         recipients: true,
@@ -150,15 +172,25 @@ export async function getCampaignById(
 }
 
 export async function updateCampaign(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    const campaign = await prisma.campaign.findUnique({
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const campaign = await prisma.campaign.findFirst({
       where: {
         id,
+        userId,
       },
     });
 
@@ -203,7 +235,7 @@ export async function updateCampaign(
     const updatedCampaign =
       await prisma.campaign.update({
         where: {
-          id,
+          id: campaign.id,
         },
         data: {
           ...(name !== undefined && { name }),
@@ -237,15 +269,25 @@ export async function updateCampaign(
 }
 
 export async function cancelCampaign(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    const campaign = await prisma.campaign.findUnique({
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const campaign = await prisma.campaign.findFirst({
       where: {
         id,
+        userId,
       },
     });
 
@@ -280,7 +322,7 @@ export async function cancelCampaign(
     const cancelledCampaign =
       await prisma.campaign.update({
         where: {
-          id,
+          id: campaign.id,
         },
         data: {
           status: "CANCELLED",
@@ -304,11 +346,20 @@ export async function cancelCampaign(
 }
 
 export async function scheduleCampaign(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
 
     const { scheduledAt } = req.body;
 
@@ -339,9 +390,10 @@ export async function scheduleCampaign(
       return;
     }
 
-    const campaign = await prisma.campaign.findUnique({
+    const campaign = await prisma.campaign.findFirst({
       where: {
         id,
+        userId,
       },
     });
 
@@ -365,7 +417,7 @@ export async function scheduleCampaign(
     const scheduledCampaign =
       await prisma.campaign.update({
         where: {
-          id,
+          id: campaign.id,
         },
         data: {
           scheduledAt: parsedScheduledAt,
@@ -391,11 +443,35 @@ export async function scheduleCampaign(
 
 
 export async function executeCampaignController(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id: campaignId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        userId,
+      },
+    });
+
+    if (!campaign) {
+      res.status(404).json({
+        message: "Campaign not found",
+      });
+
+      return;
+    }
 
     await executeCampaign(campaignId);
 
@@ -433,11 +509,38 @@ export async function executeCampaignController(
 
 
 export async function getCampaignProgressController(
-  req: Request<{ id: string }>,
+  req: AuthenticatedRequest & Request<{ id: string }>,
   res: Response,
 ): Promise<void> {
   try {
     const { id: campaignId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+
+      return;
+    }
+
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!campaign) {
+      res.status(404).json({
+        message: "Campaign not found",
+      });
+
+      return;
+    }
 
     const progress = await getCampaignProgress(
       campaignId,
